@@ -30,6 +30,16 @@ const byte IMAGES[][8] = {
      B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
+const int buttonPin = D2;        // D2 & PWD
+const int ledPin = LED_BUILTIN;  // Amica
+
+int buttonState;      // the current reading from the input pin
+int lastButtonState;  // the previous reading from the input pin
+int ledState = LOW;
+
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+
 // NodeMCU Amica
 // CS: D4 - DIN: D7(MOSI) - CLK: D5(SCK)
 int pinCS = D4;  // SPI
@@ -43,8 +53,26 @@ String printWord = "Arduino";
 int spacer = 1;
 int width = 5 + spacer;  // The font width is 5 pixels
 
-// void setRotation(uint8_t rotation);
 void setup() {
+    Serial.begin(115200);
+    setupMatrix();
+    setupPinModes();
+}
+
+void loop() {
+    int testState = handleButtonPress();
+    drawMatrix(testState);
+}
+
+//
+// Setup functions
+//
+void setupPinModes() {
+    pinMode(buttonPin, INPUT_PULLUP);
+    pinMode(ledPin, OUTPUT);
+}
+
+void setupMatrix() {
     matrix.setIntensity(7);  // Use a value between 0 and 15 for brightness
 
     matrix.setRotation(0, 1);  // The first display is position upside down
@@ -61,11 +89,41 @@ void setup() {
     matrix.setRotation(11, 1);
 }
 
-void loop() {
-    drawMatrix();
+//
+// Loop functions
+//
+int handleButtonPress() {
+    int currentButtonState = digitalRead(buttonPin);
+
+    if (currentButtonState != lastButtonState) {
+        lastDebounceTime = millis();
+    }
+
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        Serial.print(currentButtonState);
+        Serial.print(" - ");
+        Serial.print(buttonState);
+        Serial.println();
+
+        if (currentButtonState != buttonState) {
+            buttonState = currentButtonState;
+
+            if (buttonState == LOW) {
+                ledState = LOW;
+            } else {
+                ledState = HIGH;
+            }
+
+            return buttonState;
+        }
+    }
+
+    // set the LED:
+    digitalWrite(ledPin, ledState);
+    lastButtonState = currentButtonState;
 }
 
-void drawMatrix() {
+void drawMatrix(int stateOfButton) {
     displayImage(IMAGES[0], 15, 1);              // Cross
     displayImage(IMAGES[1], 7, 1);               // Check mark
     displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
@@ -75,6 +133,9 @@ void drawMatrix() {
     matrix.write();
 }
 
+//
+// Other functions
+//
 void displayImage(const byte* image, int decrementX, int decrementY) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
