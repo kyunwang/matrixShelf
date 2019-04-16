@@ -30,14 +30,19 @@ const byte IMAGES[][8] = {
      B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
+// Button
 const int buttonPin = D2;  // D2 & PWD
 int buttonState;           // the current reading from the input pin
 int lastButtonState;       // the previous reading from the input pin
 
+// LDR
+const int ldrPin = A0;
+
+// Debounce
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;
 
-// NodeMCU Amica
+// LED Matrix Max7219 - NodeMCU Amica
 // CS: D4 - DIN: D7(MOSI) - CLK: D5(SCK)
 int pinCS = D4;  // SPI
 int numberOfHorizontalDisplays = 12;
@@ -52,12 +57,15 @@ int width = 5 + spacer;  // The font width is 5 pixels
 
 void setup() {
     Serial.begin(115200);
+    printWord = "hello";
     setupMatrix();
     setupPinModes();
 }
 
 void loop() {
-    int testState = handleButtonPress();
+    // int testState = handleButtonPress();
+    int testState = handleLdr();
+    Serial.println(testState);
     drawMatrix(testState);
 }
 
@@ -66,7 +74,7 @@ void loop() {
 //
 void setupPinModes() {
     pinMode(buttonPin, INPUT_PULLUP);
-    // pinMode(ledPin, OUTPUT);
+    pinMode(ldrPin, INPUT);
 }
 
 void setupMatrix() {
@@ -89,6 +97,11 @@ void setupMatrix() {
 //
 // Loop functions
 //
+int handleLdr() {
+    int ldrValue = analogRead(ldrPin);
+    return ldrValue;
+}
+
 int handleButtonPress() {
     int currentButtonState = digitalRead(buttonPin);
 
@@ -97,10 +110,10 @@ int handleButtonPress() {
     }
 
     if ((millis() - lastDebounceTime) > debounceDelay) {
-        Serial.print(currentButtonState);
-        Serial.print(" - ");
-        Serial.print(buttonState);
-        Serial.println();
+        // Serial.print(currentButtonState);
+        // Serial.print(" - ");
+        // Serial.print(buttonState);
+        // Serial.println();
 
         if (currentButtonState != buttonState) {
             buttonState = currentButtonState;
@@ -121,7 +134,7 @@ void drawMatrix(int stateOfButton) {
 
     displayImage(IMAGES[0], 15, 1);  // Cross
     displayImage(IMAGES[1], 7, 1);   // Check mark
-    if (stateOfButton) {
+    if (stateOfButton == 1 || stateOfButton < 750) {
         displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
 
     } else {
