@@ -2,32 +2,24 @@
 #include <Max72xxPanel.h>
 #include <SPI.h>
 
-const byte IMAGES[][8] = {
-    {B00000010,  // Checkmark
-     B00000001,
-     B00000010,
-     B00000100,
-     B00001000,
-     B00010000,
-     B00000000,
-     B00000000},
-    {B00010001,  // X - Cross
-     B00001010,
-     B00000100,
-     B00001010,
-     B00010001,
-     B00000000,
-     B00000000,
-     B00000000},
-    // Euro sign
-    {B00011100,
-     B00110110,
-     B01010101,
-     B01010101,
-     B01000001,
-     B00100010,
-     B00000000,
-     B00000000}};
+// Shelf text and state management
+String shelfText[5] = {
+    "175",
+    "Available",
+    "Unavailable",
+    "Try shoes on?",
+    "Arriving shortly"};
+
+bool isIdle = true;
+int currentStep = 0;  // 0: IDLE, 1: (Un)available, 2: Try shoes on, 3: Please wait
+
+// Matrix images
+const byte IMAGES[][8] = {{B00000010,  // Checkmark
+                           B00000001, B00000010, B00000100, B00001000, B00010000, B00000000, B00000000},
+                          {B00010001,  // X - Cross
+                           B00001010, B00000100, B00001010, B00010001, B00000000, B00000000, B00000000},
+                          // Euro sign
+                          {B00011100, B00110110, B01010101, B01010101, B01000001, B00100010, B00000000, B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
 // Button
@@ -60,12 +52,14 @@ void setup() {
     printWord = "hello";
     setupMatrix();
     setupPinModes();
+
+    for (int i = 0; i < 5; i++) Serial.println(shelfText[i]);
 }
 
 void loop() {
     // int testState = handleButtonPress();
     int testState = handleLdr();
-    Serial.println(testState);
+    // Serial.println(testState);
     drawMatrix(testState);
 }
 
@@ -92,6 +86,8 @@ void setupMatrix() {
     matrix.setRotation(9, 1);
     matrix.setRotation(10, 1);
     matrix.setRotation(11, 1);
+
+    // matrix.setTextSize(2);
 }
 
 //
@@ -128,21 +124,31 @@ int handleButtonPress() {
 
     lastButtonState = currentButtonState;
 }
-
-void drawMatrix(int stateOfButton) {
+int step = 0;
+void drawMatrix(int isPickedUpLdr) {
     matrix.fillScreen(LOW);
 
-    displayImage(IMAGES[0], 15, 1);  // Cross
-    displayImage(IMAGES[1], 7, 1);   // Check mark
-    if (stateOfButton == 1 || stateOfButton < 750) {
+    // displayImage(IMAGES[0], 15, 1);  // Cross
+    // displayImage(IMAGES[1], 7, 1);   // Check mark
+    if (isPickedUpLdr > 750) {
         displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
 
     } else {
-        for (int i = 0; i < printWord.length(); i++) {
-            matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
+        for (int i = 0; i < shelfText[step].length(); i++) {
+            matrix.drawChar(i * (width) + 1, 0, shelfText[step][i], HIGH, LOW, 1);
         }
+        // for (int i = 0; i < printWord.length(); i++) {
+        //     matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
+        // }
     }
+    step++;
+
+    if (step > 5) {
+        step = 0;
+    }
+
     matrix.write();
+    delay(1500);
 }
 
 //
