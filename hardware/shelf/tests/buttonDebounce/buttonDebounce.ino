@@ -1,7 +1,8 @@
-// const int buttonPin = 4;  // D1
 //// NodeMCU
-const int buttonPin = 5;  // D2 & PWD
-const int ledPin = LED_BUILTIN;
+// const int buttonPin = 5;  // D1
+const int buttonPin = D2;        // D2 & PWD
+const int ledPin = LED_BUILTIN;  // Amica
+// const int ledPin = 2;  // Lolin = the built in led
 //// Uno
 // const int buttonPin = 4;
 // const int ledPin = 12;
