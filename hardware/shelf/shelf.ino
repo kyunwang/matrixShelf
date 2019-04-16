@@ -30,12 +30,9 @@ const byte IMAGES[][8] = {
      B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
-const int buttonPin = D2;        // D2 & PWD
-const int ledPin = LED_BUILTIN;  // Amica
-
-int buttonState;      // the current reading from the input pin
-int lastButtonState;  // the previous reading from the input pin
-int ledState = LOW;
+const int buttonPin = D2;  // D2 & PWD
+int buttonState;           // the current reading from the input pin
+int lastButtonState;       // the previous reading from the input pin
 
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;
@@ -69,7 +66,7 @@ void loop() {
 //
 void setupPinModes() {
     pinMode(buttonPin, INPUT_PULLUP);
-    pinMode(ledPin, OUTPUT);
+    // pinMode(ledPin, OUTPUT);
 }
 
 void setupMatrix() {
@@ -109,26 +106,28 @@ int handleButtonPress() {
             buttonState = currentButtonState;
 
             if (buttonState == LOW) {
-                ledState = LOW;
             } else {
-                ledState = HIGH;
             }
 
             return buttonState;
         }
     }
 
-    // set the LED:
-    digitalWrite(ledPin, ledState);
     lastButtonState = currentButtonState;
 }
 
 void drawMatrix(int stateOfButton) {
-    displayImage(IMAGES[0], 15, 1);              // Cross
-    displayImage(IMAGES[1], 7, 1);               // Check mark
-    displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
-    for (int i = 0; i < printWord.length(); i++) {
-        matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
+    matrix.fillScreen(LOW);
+
+    displayImage(IMAGES[0], 15, 1);  // Cross
+    displayImage(IMAGES[1], 7, 1);   // Check mark
+    if (stateOfButton) {
+        displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
+
+    } else {
+        for (int i = 0; i < printWord.length(); i++) {
+            matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
+        }
     }
     matrix.write();
 }
