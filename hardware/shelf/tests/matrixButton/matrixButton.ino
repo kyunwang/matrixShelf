@@ -3,7 +3,7 @@
 #include <SPI.h>
 
 const byte IMAGES[][8] = {
-    {B00000010,
+    {B00000010,  // Checkmark
      B00000001,
      B00000010,
      B00000100,
@@ -11,12 +11,21 @@ const byte IMAGES[][8] = {
      B00010000,
      B00000000,
      B00000000},
-    {B00010001,
+    {B00010001,  // X - Cross
      B00001010,
      B00000100,
      B00001010,
      B00010001,
      B00000000,
+     B00000000,
+     B00000000},
+    // Euro sign
+    {B00011100,
+     B00110110,
+     B01010101,
+     B01010101,
+     B01000001,
+     B00100010,
      B00000000,
      B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
@@ -53,10 +62,15 @@ void setup() {
 }
 
 void loop() {
-    displayImage(IMAGES[0], 15, 1);
-    displayImage(IMAGES[1], 7, 1);
+    drawMatrix();
+}
+
+void drawMatrix() {
+    displayImage(IMAGES[0], 15, 1);              // Cross
+    displayImage(IMAGES[1], 7, 1);               // Check mark
+    displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
     for (int i = 0; i < printWord.length(); i++) {
-        matrix.drawChar(i * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
+        matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
     }
     matrix.write();
 }
