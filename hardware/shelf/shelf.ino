@@ -16,12 +16,13 @@ bool isPickedUp = false;
 String selectedSize = "43.5";
 
 // Matrix images
-const byte IMAGES[][8] = {{B00000010,  // Checkmark
-                           B00000001, B00000010, B00000100, B00001000, B00010000, B00000000, B00000000},
-                          {B00010001,  // X - Cross
-                           B00001010, B00000100, B00001010, B00010001, B00000000, B00000000, B00000000},
-                          // Euro sign
-                          {B00011100, B00110110, B01010101, B01010101, B01000001, B00100010, B00000000, B00000000}};
+const byte IMAGES[][8] = {
+	// Checkmark
+	{B00000010, B00000001, B00000010, B00000100, B00001000, B00010000, B00000000, B00000000},
+	// X - Cross
+	{B00010001, B00001010, B00000100, B00001010, B00010001, B00000000, B00000000, B00000000},
+	// Euro sign
+	{B00011100, B00110110, B01010101, B01010101, B01000001, B00100010, B00000000, B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
 // Button
@@ -46,8 +47,6 @@ int numberOfHorizontalDisplays = 12;
 int numberOfVerticalDisplays = 1;
 
 Max72xxPanel matrix = Max72xxPanel(pinCS, numberOfHorizontalDisplays, numberOfVerticalDisplays);
-
-String printWord = "Arduino";
 
 int spacer = 1;
 int charWidth = 5 + spacer;  // The font width is 5 pixels
