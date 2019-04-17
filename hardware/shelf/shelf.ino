@@ -61,13 +61,9 @@ void setup() {
 void loop() {
     int testState1 = handleButtonPress1();
     // int testState2 = handleButtonPress2();
-    // Serial.println(testState1);
-    // Serial.print(" - ");
-    // Serial.print(digitalRead(buttonPin1));
-    // Serial.println();
+    Serial.println(testState1);
     // int testState = handleLdr();
     // Serial.println(testState);
-    // drawMatrix();
     handleMatrix();
 }
 
@@ -118,11 +114,6 @@ int handleButtonPress1() {
         if (currentButtonState1 != buttonState1) {
             buttonState1 = currentButtonState1;
 
-            Serial.print(currentButtonState1);
-            Serial.print(" - ");
-            Serial.print(buttonState1);
-            Serial.println();
-
             if (buttonState1 == LOW) {
                 if (currentStep == 4) {
                     currentStep = 0;
@@ -131,9 +122,6 @@ int handleButtonPress1() {
                 }
             } else {
             }
-
-            // lastButtonState1 = currentButtonState1;
-            // return buttonState1;
         }
     }
 
@@ -167,7 +155,7 @@ int handleButtonPress2() {
     lastButtonState2 = currentButtonState2;
 }
 
-void drawMatrix(bool shouldRefresh = true) {
+void drawMatrix(bool shouldRefresh = true, int displacement = 0) {
     if (shouldRefresh) {
         matrix.fillScreen(LOW);
     }
@@ -175,22 +163,13 @@ void drawMatrix(bool shouldRefresh = true) {
     // displayImage(IMAGES[0], 15, 1);  // Cross
     // displayImage(IMAGES[1], 7, 1);   // Check mark
     // if (isPickedUpLdr > 750) {
-    // displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
 
-    // } else {
-    // for (int i = 0; i < shelfText[step].length(); i++) {
-    //     matrix.drawChar(i * (width) + 1, 0, shelfText[step][i], HIGH, LOW, 1);
-    // }
     String string = shelfText[currentStep];
 
     for (int i = 0; i < string.length(); i++) {
-        matrix.drawChar((i + 1) * (width) + 1, 1, string[i], HIGH, LOW, 1);
+        const int posX = (i + displacement) * (width) + 1;
+        matrix.drawChar(posX, 1, string[i], HIGH, LOW, 1);
     }
-
-    // for (int i = 0; i < printWord.length(); i++) {
-    //     matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
-    // }
-    // }
 
     matrix.write();
 }
@@ -199,8 +178,8 @@ void handleMatrix() {
     switch (currentStep) {
         case 0:  // IDLE
             matrix.fillScreen(LOW);
-            displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
-            drawMatrix(false);
+            displayImage(IMAGES[2], matrix.width() - 1, 0);  // Euro sign
+            drawMatrix(false, 1);
             break;
         case 1:  // Available
             drawMatrix();
