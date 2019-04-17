@@ -12,6 +12,8 @@ String shelfText[5] = {
 
 bool isIdle = true;
 int currentStep = 0;  // 0: IDLE, 1: Available, 2: Unavailable, 3: Try shoes on, 4: Please wait
+bool isPickedUp = false;
+String selectedSize = "43.5";
 
 // Matrix images
 const byte IMAGES[][8] = {{B00000010,  // Checkmark
@@ -48,7 +50,7 @@ Max72xxPanel matrix = Max72xxPanel(pinCS, numberOfHorizontalDisplays, numberOfVe
 String printWord = "Arduino";
 
 int spacer = 1;
-int width = 5 + spacer;  // The font width is 5 pixels
+int charWidth = 5 + spacer;  // The font width is 5 pixels
 
 void setup() {
     Serial.begin(115200);
@@ -59,11 +61,16 @@ void setup() {
 }
 
 void loop() {
-    int testState1 = handleButtonPress1();
-    // int testState2 = handleButtonPress2();
-    Serial.println(testState1);
-    // int testState = handleLdr();
-    // Serial.println(testState);
+	  if(Serial.available()){
+				String serialRead = Serial.readStringUntil('\n');
+				serialRead.trim();
+				selectedSize = serialRead;
+        Serial.println("You selected: " + serialRead);
+    }
+
+    handleButton1();
+    handleButton2();
+    handleLdr();
     handleMatrix();
 }
 
@@ -79,7 +86,7 @@ void setupPinModes() {
 void setupMatrix() {
     matrix.setIntensity(7);  // Use a value between 0 and 15 for brightness
 
-    matrix.setRotation(0, 1);  // The first display is position upside down
+    matrix.setRotation(0, 1);  // Turns it 45deg clockwise
     matrix.setRotation(1, 1);
     matrix.setRotation(2, 1);
     matrix.setRotation(3, 1);
@@ -91,8 +98,6 @@ void setupMatrix() {
     matrix.setRotation(9, 1);
     matrix.setRotation(10, 1);
     matrix.setRotation(11, 1);
-
-    // matrix.setTextSize(2);
 }
 
 //
@@ -100,10 +105,30 @@ void setupMatrix() {
 //
 int handleLdr() {
     int ldrValue = analogRead(ldrPin);
+
+    switch (currentStep) {
+        case 1:  // Available
+            if (ldrValue > 750) {
+                // isPickedUp = true;
+                currentStep = 3;
+            } else {
+                // Depends on availability
+                currentStep = 1;
+            }
+            break;
+        case 3:
+            if (ldrValue < 750) {
+                // Should check for whether it has been for 5sec and whether it had been replied on
+                isPickedUp = false;
+                currentStep = 1;
+            }
+            break;
+    }
+
     return ldrValue;
 }
 
-int handleButtonPress1() {
+int handleButton1() {
     int currentButtonState1 = digitalRead(buttonPin1);
 
     if (currentButtonState1 != lastButtonState1) {
@@ -115,12 +140,7 @@ int handleButtonPress1() {
             buttonState1 = currentButtonState1;
 
             if (buttonState1 == LOW) {
-                if (currentStep == 4) {
-                    currentStep = 0;
-                } else {
-                    currentStep++;
-                }
-            } else {
+                handleButtonPress(0);
             }
         }
     }
@@ -128,7 +148,7 @@ int handleButtonPress1() {
     lastButtonState1 = currentButtonState1;
     return buttonState1;
 }
-int handleButtonPress2() {
+int handleButton2() {
     int currentButtonState2 = digitalRead(buttonPin2);
 
     if (currentButtonState2 != lastButtonState2) {
@@ -136,23 +156,38 @@ int handleButtonPress2() {
     }
 
     if ((millis() - lastDebounceTime) > debounceDelay) {
-        // Serial.print(currentButtonState2);
-        // Serial.print(" - ");
-        // Serial.print(buttonState2);
-        // Serial.println();
-
         if (currentButtonState2 != buttonState2) {
             buttonState2 = currentButtonState2;
 
             if (buttonState2 == LOW) {
-            } else {
+                handleButtonPress(1);
             }
-
-            return buttonState2;
         }
     }
 
     lastButtonState2 = currentButtonState2;
+    return buttonState2;
+}
+
+void handleButtonPress(int buttonSide) {
+    switch (currentStep) {
+        case 0:
+            currentStep++;  // Jump to availablity check
+            break;
+        case 3:
+            if (buttonSide == 0) {  // Yes
+                currentStep = 4;
+            } else {  // No
+                // depending on availability: 1 or 2
+                // currentStep = 1;
+                currentStep = 0;
+            }
+            break;
+        // case 4:
+        // break;
+        default:
+            break;
+    }
 }
 
 void drawMatrix(bool shouldRefresh = true, int displacement = 0) {
@@ -160,14 +195,17 @@ void drawMatrix(bool shouldRefresh = true, int displacement = 0) {
         matrix.fillScreen(LOW);
     }
 
-    // displayImage(IMAGES[0], 15, 1);  // Cross
-    // displayImage(IMAGES[1], 7, 1);   // Check mark
-    // if (isPickedUpLdr > 750) {
-
     String string = shelfText[currentStep];
 
+    int divider = 1;
     for (int i = 0; i < string.length(); i++) {
-        const int posX = (i + displacement) * (width) + 1;
+        if (isSpace(string[i])) {
+            divider = divider - 3;
+            continue;
+        }
+
+        const int posX = (i + displacement) * (charWidth) + divider;
+
         matrix.drawChar(posX, 1, string[i], HIGH, LOW, 1);
     }
 
@@ -181,17 +219,34 @@ void handleMatrix() {
             displayImage(IMAGES[2], matrix.width() - 1, 0);  // Euro sign
             drawMatrix(false, 1);
             break;
-        case 1:  // Available
+        case 1: {  // Available
             drawMatrix();
+
+            int j = 0;
+            for (int i = selectedSize.length(); i > 0; i--) {
+                const int posX = matrix.width() - ((i) * (charWidth));
+
+                matrix.drawChar(posX, 1, selectedSize[j], HIGH, LOW, 1);
+                j++;
+            }
+            matrix.write();
+
             break;
+        }
         case 2:  // Unavailable shoes on?
             drawMatrix();
             break;
-        case 3:  // Try shoes on?
-            drawMatrix();
+        case 3:  // Try shoes (on)?
+            matrix.fillScreen(LOW);
+            displayImage(IMAGES[0], 18, 1);  // Check mark
+            displayImage(IMAGES[1], 7, 1);   // Cross
+            drawMatrix(false);
             break;
         case 4:  // Please wait
             drawMatrix();
+            delay(2000);
+            // currentStep = 1;
+            currentStep = 0;
             break;
         default:
             break;
