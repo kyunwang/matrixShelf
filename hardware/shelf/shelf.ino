@@ -11,7 +11,7 @@ String shelfText[5] = {
     "Arriving shortly"};
 
 bool isIdle = true;
-int currentStep = 0;  // 0: IDLE, 1: (Un)available, 2: Try shoes on, 3: Please wait
+int currentStep = 0;  // 0: IDLE, 1: Available, 2: Unavailable, 3: Try shoes on, 4: Please wait
 
 // Matrix images
 const byte IMAGES[][8] = {{B00000010,  // Checkmark
@@ -23,9 +23,12 @@ const byte IMAGES[][8] = {{B00000010,  // Checkmark
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
 // Button
-const int buttonPin = D2;  // D2 & PWD
-int buttonState;           // the current reading from the input pin
-int lastButtonState;       // the previous reading from the input pin
+const int buttonPin1 = D2;  // D2 & PWD
+int buttonState1;           // the current reading from the input pin
+int lastButtonState1;       // the previous reading from the input pin
+const int buttonPin2 = D3;  // D3
+int buttonState2;           // the current reading from the input pin
+int lastButtonState2;       // the previous reading from the input pin
 
 // LDR
 const int ldrPin = A0;
@@ -49,7 +52,6 @@ int width = 5 + spacer;  // The font width is 5 pixels
 
 void setup() {
     Serial.begin(115200);
-    printWord = "hello";
     setupMatrix();
     setupPinModes();
 
@@ -57,17 +59,24 @@ void setup() {
 }
 
 void loop() {
-    // int testState = handleButtonPress();
-    int testState = handleLdr();
+    int testState1 = handleButtonPress1();
+    // int testState2 = handleButtonPress2();
+    // Serial.println(testState1);
+    // Serial.print(" - ");
+    // Serial.print(digitalRead(buttonPin1));
+    // Serial.println();
+    // int testState = handleLdr();
     // Serial.println(testState);
-    drawMatrix(testState);
+    // drawMatrix();
+    handleMatrix();
 }
 
 //
 // Setup functions
 //
 void setupPinModes() {
-    pinMode(buttonPin, INPUT_PULLUP);
+    pinMode(buttonPin1, INPUT_PULLUP);
+    pinMode(buttonPin2, INPUT_PULLUP);
     pinMode(ldrPin, INPUT);
 }
 
@@ -98,57 +107,116 @@ int handleLdr() {
     return ldrValue;
 }
 
-int handleButtonPress() {
-    int currentButtonState = digitalRead(buttonPin);
+int handleButtonPress1() {
+    int currentButtonState1 = digitalRead(buttonPin1);
 
-    if (currentButtonState != lastButtonState) {
+    if (currentButtonState1 != lastButtonState1) {
         lastDebounceTime = millis();
     }
 
     if ((millis() - lastDebounceTime) > debounceDelay) {
-        // Serial.print(currentButtonState);
-        // Serial.print(" - ");
-        // Serial.print(buttonState);
-        // Serial.println();
+        if (currentButtonState1 != buttonState1) {
+            buttonState1 = currentButtonState1;
 
-        if (currentButtonState != buttonState) {
-            buttonState = currentButtonState;
+            Serial.print(currentButtonState1);
+            Serial.print(" - ");
+            Serial.print(buttonState1);
+            Serial.println();
 
-            if (buttonState == LOW) {
+            if (buttonState1 == LOW) {
+                if (currentStep == 4) {
+                    currentStep = 0;
+                } else {
+                    currentStep++;
+                }
             } else {
             }
 
-            return buttonState;
+            // lastButtonState1 = currentButtonState1;
+            // return buttonState1;
         }
     }
 
-    lastButtonState = currentButtonState;
+    lastButtonState1 = currentButtonState1;
+    return buttonState1;
 }
-int step = 0;
-void drawMatrix(int isPickedUpLdr) {
-    matrix.fillScreen(LOW);
+int handleButtonPress2() {
+    int currentButtonState2 = digitalRead(buttonPin2);
+
+    if (currentButtonState2 != lastButtonState2) {
+        lastDebounceTime = millis();
+    }
+
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        // Serial.print(currentButtonState2);
+        // Serial.print(" - ");
+        // Serial.print(buttonState2);
+        // Serial.println();
+
+        if (currentButtonState2 != buttonState2) {
+            buttonState2 = currentButtonState2;
+
+            if (buttonState2 == LOW) {
+            } else {
+            }
+
+            return buttonState2;
+        }
+    }
+
+    lastButtonState2 = currentButtonState2;
+}
+
+void drawMatrix(bool shouldRefresh = true) {
+    if (shouldRefresh) {
+        matrix.fillScreen(LOW);
+    }
 
     // displayImage(IMAGES[0], 15, 1);  // Cross
     // displayImage(IMAGES[1], 7, 1);   // Check mark
-    if (isPickedUpLdr > 750) {
-        displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
+    // if (isPickedUpLdr > 750) {
+    // displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
 
-    } else {
-        for (int i = 0; i < shelfText[step].length(); i++) {
-            matrix.drawChar(i * (width) + 1, 0, shelfText[step][i], HIGH, LOW, 1);
-        }
-        // for (int i = 0; i < printWord.length(); i++) {
-        //     matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
-        // }
-    }
-    step++;
+    // } else {
+    // for (int i = 0; i < shelfText[step].length(); i++) {
+    //     matrix.drawChar(i * (width) + 1, 0, shelfText[step][i], HIGH, LOW, 1);
+    // }
+    String string = shelfText[currentStep];
 
-    if (step > 5) {
-        step = 0;
+    for (int i = 0; i < string.length(); i++) {
+        matrix.drawChar((i + 1) * (width) + 1, 1, string[i], HIGH, LOW, 1);
     }
+
+    // for (int i = 0; i < printWord.length(); i++) {
+    //     matrix.drawChar((i + 1) * (width) + 1, 1, printWord[i], HIGH, LOW, 1);
+    // }
+    // }
 
     matrix.write();
-    delay(1500);
+}
+
+void handleMatrix() {
+    switch (currentStep) {
+        case 0:  // IDLE
+            matrix.fillScreen(LOW);
+            displayImage(IMAGES[2], matrix.width(), 0);  // Euro sign
+            drawMatrix(false);
+            break;
+        case 1:  // Available
+            drawMatrix();
+            break;
+        case 2:  // Unavailable shoes on?
+            drawMatrix();
+            break;
+        case 3:  // Try shoes on?
+            drawMatrix();
+            break;
+        case 4:  // Please wait
+            drawMatrix();
+            break;
+        default:
+            break;
+    }
 }
 
 //
