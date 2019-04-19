@@ -17,12 +17,12 @@ String selectedSize = "43.5";
 
 // Matrix images
 const byte IMAGES[][8] = {
-	// Checkmark
-	{B00000010, B00000001, B00000010, B00000100, B00001000, B00010000, B00000000, B00000000},
-	// X - Cross
-	{B00010001, B00001010, B00000100, B00001010, B00010001, B00000000, B00000000, B00000000},
-	// Euro sign
-	{B00011100, B00110110, B01010101, B01010101, B01000001, B00100010, B00000000, B00000000}};
+    // Checkmark
+    {B00000010, B00000001, B00000010, B00000100, B00001000, B00010000, B00000000, B00000000},
+    // X - Cross
+    {B00010001, B00001010, B00000100, B00001010, B00010001, B00000000, B00000000, B00000000},
+    // Euro sign
+    {B00011100, B00110110, B01010101, B01010101, B01000001, B00100010, B00000000, B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
 // Button
@@ -60,11 +60,14 @@ void setup() {
 }
 
 void loop() {
-	  if(Serial.available()){
-				String serialRead = Serial.readStringUntil('\n');
-				serialRead.trim();
-				selectedSize = serialRead;
+    if (Serial.available()) {
+        String serialRead = Serial.readStringUntil('\n');
+        serialRead.trim();
+        selectedSize = serialRead;
         Serial.println("You selected: " + serialRead);
+        if (currentStep == 0) {
+            currentStep++;
+        }
     }
 
     handleButton1();
@@ -237,7 +240,7 @@ void handleMatrix() {
             break;
         case 3:  // Try shoes (on)?
             matrix.fillScreen(LOW);
-            displayImage(IMAGES[0], 18, 1);  // Check mark
+            displayImage(IMAGES[0], 16, 1);  // Check mark
             displayImage(IMAGES[1], 7, 1);   // Cross
             drawMatrix(false);
             break;
