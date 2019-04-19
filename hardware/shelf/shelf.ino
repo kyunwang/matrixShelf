@@ -1,5 +1,6 @@
 #include <Adafruit_GFX.h>
 #include <Max72xxPanel.h>
+#include <PinButton.h>
 #include <SPI.h>
 
 // Shelf text and state management
@@ -26,12 +27,8 @@ const byte IMAGES[][8] = {
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
 // Button
-const int buttonPin1 = D2;  // D2 & PWD
-int buttonState1;           // the current reading from the input pin
-int lastButtonState1;       // the previous reading from the input pin
-const int buttonPin2 = D3;  // D3
-int buttonState2;           // the current reading from the input pin
-int lastButtonState2;       // the previous reading from the input pin
+PinButton buttonPin1 = D2;  // D2 & PWD
+PinButton buttonPin2 = D3;  // D3
 
 // LDR
 const int ldrPin = A0;
@@ -70,8 +67,10 @@ void loop() {
         }
     }
 
-    handleButton1();
-    handleButton2();
+		buttonPin1.update();
+		buttonPin2.update();
+
+    handleButton();
     handleLdr();
     handleMatrix();
 }
@@ -80,8 +79,8 @@ void loop() {
 // Setup functions
 //
 void setupPinModes() {
-    pinMode(buttonPin1, INPUT_PULLUP);
-    pinMode(buttonPin2, INPUT_PULLUP);
+    // pinMode(buttonPin1, INPUT_PULLUP);
+    // pinMode(buttonPin2, INPUT_PULLUP);
     pinMode(ldrPin, INPUT);
 }
 
@@ -130,45 +129,14 @@ int handleLdr() {
     return ldrValue;
 }
 
-int handleButton1() {
-    int currentButtonState1 = digitalRead(buttonPin1);
+void handleButton() {
+	if (buttonPin1.isSingleClick()) {
+		handleButtonPress(0);
+	}
 
-    if (currentButtonState1 != lastButtonState1) {
-        lastDebounceTime = millis();
-    }
-
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-        if (currentButtonState1 != buttonState1) {
-            buttonState1 = currentButtonState1;
-
-            if (buttonState1 == LOW) {
-                handleButtonPress(0);
-            }
-        }
-    }
-
-    lastButtonState1 = currentButtonState1;
-    return buttonState1;
-}
-int handleButton2() {
-    int currentButtonState2 = digitalRead(buttonPin2);
-
-    if (currentButtonState2 != lastButtonState2) {
-        lastDebounceTime = millis();
-    }
-
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-        if (currentButtonState2 != buttonState2) {
-            buttonState2 = currentButtonState2;
-
-            if (buttonState2 == LOW) {
-                handleButtonPress(1);
-            }
-        }
-    }
-
-    lastButtonState2 = currentButtonState2;
-    return buttonState2;
+	if (buttonPin2.isSingleClick()) {
+		handleButtonPress(1);
+	}
 }
 
 void handleButtonPress(int buttonSide) {
