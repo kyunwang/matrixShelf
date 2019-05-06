@@ -193,7 +193,7 @@ void handleMatrix() {
             displayImage(IMAGES[2], matrix.width() - 1, 0);  // Euro sign
             drawMatrix(false, 1);
             break;
-        case 1: {  // Available
+        case 1: {  // In store
             drawMatrix();
 
             int j = 0;
@@ -207,16 +207,16 @@ void handleMatrix() {
 
             break;
         }
-        case 2:  // Unavailable shoes on?
+        case 2:  // -
             drawMatrix();
             break;
-        case 3:  // Try shoes (on)?
+        case 3:  // Call for shoes?
             matrix.fillScreen(LOW);
             displayImage(IMAGES[0], 16, 1);  // Check mark
             displayImage(IMAGES[1], 7, 1);   // Cross
             drawMatrix(false);
             break;
-        case 4:  // Please wait
+        case 4:  // Take a seat, someone will come over
             drawMatrix();
             delay(5000);
             // currentStep = 1;

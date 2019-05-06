@@ -1,0 +1,27 @@
+{
+	"name": "server",
+	"version": "0.0.1",
+	"author": "Kang Yun Wang <me@kyunwang.nl> (https://www.kyunwang.nl)",
+	"license": "",
+	"description": "",
+	"keywords": [],
+	"scripts": {
+		"start": "npm run dev",
+		"dev": "nodemon index.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kyunwang/matrixShelf.git"
+	},
+	"bugs": {
+		"url": "https://github.com/kyunwang/matrixShelf/issues"
+	},
+	"homepage": "https://github.com/kyunwang/matrixShelf",
+	"dependencies": {
+		"express": "^4.16.4",
+		"ws": "^7.0.0"
+	},
+	"devDependencies": {
+		"nodemon": "^1.19.0"
+	}
+}
