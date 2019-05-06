@@ -6,10 +6,12 @@
 // Shelf text and state management
 String shelfText[5] = {
     "175",
-    "Available",
-    "Unavailable",
-    "Try shoes on?",
-    "Arriving shortly"};
+    "In store",
+    "-",
+    "Call for shoes?", // Or: Get shoes?
+    // "Please wait... someone will come over",
+		"Take a seat, someone will come over"
+		};
 
 bool isIdle = true;
 int currentStep = 0;  // 0: IDLE, 1: Available, 2: Unavailable, 3: Try shoes on, 4: Please wait
@@ -32,6 +34,7 @@ PinButton buttonPin2 = D3;  // D3
 
 // LDR
 const int ldrPin = A0;
+const int ldrThreshold = 600;
 
 // Debounce
 unsigned long lastDebounceTime = 0;
@@ -67,8 +70,8 @@ void loop() {
         }
     }
 
-		buttonPin1.update();
-		buttonPin2.update();
+    buttonPin1.update();
+    buttonPin2.update();
 
     handleButton();
     handleLdr();
@@ -106,10 +109,11 @@ void setupMatrix() {
 //
 int handleLdr() {
     int ldrValue = analogRead(ldrPin);
+    Serial.println(ldrValue);
 
     switch (currentStep) {
         case 1:  // Available
-            if (ldrValue > 750) {
+            if (ldrValue > ldrThreshold) {
                 // isPickedUp = true;
                 currentStep = 3;
             } else {
@@ -118,7 +122,7 @@ int handleLdr() {
             }
             break;
         case 3:
-            if (ldrValue < 750) {
+            if (ldrValue < ldrThreshold) {
                 // Should check for whether it has been for 5sec and whether it had been replied on
                 isPickedUp = false;
                 currentStep = 1;
@@ -130,13 +134,13 @@ int handleLdr() {
 }
 
 void handleButton() {
-	if (buttonPin1.isSingleClick()) {
-		handleButtonPress(0);
-	}
+    if (buttonPin1.isSingleClick()) {
+        handleButtonPress(0);
+    }
 
-	if (buttonPin2.isSingleClick()) {
-		handleButtonPress(1);
-	}
+    if (buttonPin2.isSingleClick()) {
+        handleButtonPress(1);
+    }
 }
 
 void handleButtonPress(int buttonSide) {
@@ -214,7 +218,7 @@ void handleMatrix() {
             break;
         case 4:  // Please wait
             drawMatrix();
-            delay(2000);
+            delay(5000);
             // currentStep = 1;
             currentStep = 0;
             break;
