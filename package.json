@@ -1,0 +1,22 @@
+{
+	"name": "matrixshelf",
+	"version": "0.0.1",
+	"author": "Kang Yun Wang <me@kyunwang.nl> (https://www.kyunwang.nl)",
+	"license": "MIT",
+	"description": "",
+	"keywords": [],
+	"scripts": {
+		"start": "concurrently \"cd server && npm start\" \"cd frontend && npm start\""
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kyunwang/matrixshelf.git"
+	},
+	"bugs": {
+		"url": "https://github.com/kyunwang/matrixshelf/issues"
+	},
+	"homepage": "https://github.com/kyunwang/matrixshelf",
+	"devDependencies": {
+		"concurrently": "^4.1.0"
+	}
+}
