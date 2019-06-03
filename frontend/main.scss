@@ -1,0 +1,64 @@
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	width: 100%;
+	background: #000;
+	color: #fff;
+
+	font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+main {
+	display: flex;
+	flex-direction: column;
+
+	height: 100%;
+	width: 100%;
+	padding: 3rem 1.6rem 0;
+}
+
+p {
+	font-size: 2rem;
+	width: 60%;
+	margin-bottom: 2.4rem;
+}
+
+form {
+	[type='number'] {
+		font-family: 'big john', 'Trebuchet MS', sans-serif;
+		color: #fff;
+		font-size: 8rem;
+		font-weight: 700;
+		// text-align: center;
+		background: transparent;
+		width: 100%;
+		margin-bottom: 2.4rem;
+		border: none;
+		text-transform: uppercase;
+		outline: none;
+	}
+
+	[type='submit'] {
+		font-family: 'big john', 'Trebuchet MS', sans-serif;
+		color: #fff;
+		font-size: 1.2rem;
+		border: 2px solid #fff;
+		background: transparent;
+		padding: 0.4rem 1rem;
+		cursor: pointer;
+	}
+}
+
+button {
+	position: absolute;
+	bottom: 0;
+}
