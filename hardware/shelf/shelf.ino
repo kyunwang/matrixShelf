@@ -1,14 +1,37 @@
+#include <ESP8266WiFi.h>
+#include <SocketIOClient.h>
 #include <Adafruit_GFX.h>
 #include <Max72xxPanel.h>
 #include <PinButton.h>
 #include <SPI.h>
 
+SocketIOClient client;
+
+////// Network stuff
+const char* ssid = "ssid";
+const char* password = "password";
+
+char host[] = "42c104f0.ngrok.io";
+int port = 80;
+
+// Event - Key - Value from socket server
+extern String RID;
+extern String Rname;
+extern String Rcontent;
+
+unsigned long lastReply = 0;
+unsigned long lastSend = 0;
+///////
+
+int matrixLoopCount = 0;
+
+
 // Shelf text and state management
 String shelfText[5] = {
     "175",
     "In store",
-    "-",
-    "Call for shoes?", // Or: Get shoes?
+    "Not in store",
+    "Call for shoes", // Or: Get shoes?
     // "Please wait... someone will come over",
 		"Take a seat, someone will come over"
 		};
@@ -50,37 +73,33 @@ Max72xxPanel matrix = Max72xxPanel(pinCS, numberOfHorizontalDisplays, numberOfVe
 
 int spacer = 1;
 int charWidth = 5 + spacer;  // The font width is 5 pixels
+int wait = 20; // 20ms
 
 void setup() {
     Serial.begin(115200);
     setupMatrix();
     setupPinModes();
 
-    for (int i = 0; i < 5; i++) Serial.println(shelfText[i]);
+		connectWiFi();
+		connectSockets();
+
+    // for (int i = 0; i < 5; i++) Serial.println(shelfText[i]);
 }
 
 void loop() {
-    if (Serial.available()) {
-        String serialRead = Serial.readStringUntil('\n');
-        serialRead.trim();
-        selectedSize = serialRead;
-        Serial.println("You selected: " + serialRead);
-        if (currentStep == 0) {
-            currentStep++;
-        }
-    }
-
     buttonPin1.update();
     buttonPin2.update();
 
     handleButton();
     handleLdr();
-    handleMatrix();
+    assignMatrix();
+
+		socketMonitor();
 }
 
-//
+//////
 // Setup functions
-//
+//////
 void setupPinModes() {
     // pinMode(buttonPin1, INPUT_PULLUP);
     // pinMode(buttonPin2, INPUT_PULLUP);
@@ -104,25 +123,27 @@ void setupMatrix() {
     matrix.setRotation(11, 1);
 }
 
-//
+//////
 // Loop functions
-//
+//////
 int handleLdr() {
     int ldrValue = analogRead(ldrPin);
-    Serial.println(ldrValue);
 
     switch (currentStep) {
         case 1:  // Available
             if (ldrValue > ldrThreshold) {
+								Serial.println("LDR 1");
                 // isPickedUp = true;
                 currentStep = 3;
             } else {
                 // Depends on availability
                 currentStep = 1;
+								matrixLoopCount = 0;
             }
             break;
         case 3:
             if (ldrValue < ldrThreshold) {
+								Serial.println("LDR 3");
                 // Should check for whether it has been for 5sec and whether it had been replied on
                 isPickedUp = false;
                 currentStep = 1;
@@ -135,10 +156,12 @@ int handleLdr() {
 
 void handleButton() {
     if (buttonPin1.isSingleClick()) {
+			Serial.println('Click 1');
         handleButtonPress(0);
     }
 
     if (buttonPin2.isSingleClick()) {
+			Serial.println('Click 2');
         handleButtonPress(1);
     }
 }
@@ -146,7 +169,7 @@ void handleButton() {
 void handleButtonPress(int buttonSide) {
     switch (currentStep) {
         case 0:
-            currentStep++;  // Jump to availablity check
+            // currentStep++;  // Jump to availablity check
             break;
         case 3:
             if (buttonSide == 0) {  // Yes
@@ -164,37 +187,103 @@ void handleButtonPress(int buttonSide) {
     }
 }
 
-void drawMatrix(bool shouldRefresh = true, int displacement = 0) {
-    if (shouldRefresh) {
-        matrix.fillScreen(LOW);
-    }
+void drawMatrix(int displacement = 0) {
+	String string = shelfText[currentStep];
+	int divider = 1;
 
-    String string = shelfText[currentStep];
+	for (int i = 0; i < string.length(); i++) {
+			if (isSpace(string[i])) {
+					divider = divider - 3;
+					continue;
+			}
 
-    int divider = 1;
-    for (int i = 0; i < string.length(); i++) {
-        if (isSpace(string[i])) {
-            divider = divider - 3;
-            continue;
-        }
+			const int posX = (i + displacement) * (charWidth) + divider;
 
-        const int posX = (i + displacement) * (charWidth) + divider;
+			matrix.drawChar(posX, 1, string[i], HIGH, LOW, 1);
+	}
 
-        matrix.drawChar(posX, 1, string[i], HIGH, LOW, 1);
-    }
-
-    matrix.write();
+	matrix.write();
 }
 
-void handleMatrix() {
+
+// Source: https://github.com/markruys/arduino-Max72xxPanel/blob/master/examples/Ticker/Ticker.pde
+void tickMatrix(int displacement = 0) {
+	String string = shelfText[currentStep];
+
+	int divider = 1;
+
+	for ( int i = 0 ; i < charWidth * string.length() + matrix.width() - 1 - spacer; i++ ) {
+		if (isSpace(string[i])) {
+				divider = divider - 3;
+				continue;
+		}
+
+		matrix.fillScreen(LOW);
+
+		int letter = i / charWidth;
+		int x = (matrix.width() - 1) - i % charWidth;
+		int y = (matrix.height() - 8) / 2; // center the text vertically
+
+		while ( x + charWidth - spacer >= 0 && letter >= 0 ) {
+			if ( letter < string.length() ) {
+				matrix.drawChar(x, y, string[letter], HIGH, LOW, 1);
+			}
+
+			letter--;
+			x -= charWidth;
+		}
+
+		matrix.write(); // Send bitmap to display
+
+		delay(wait);
+
+		if (i == 0) {
+			matrixLoopCount++;
+			Serial.println(i);
+			Serial.println(matrixLoopCount);
+			if (matrixLoopCount == 2) {
+				// matrix.fillScreen(LOW);
+
+				// Quick test fix...
+				if (currentStep == 3) {
+					displayImage(IMAGES[0], 16, 1);  // Check mark
+					displayImage(IMAGES[1], 7, 1);   // Cross
+					drawMatrix(displacement);
+				}
+				
+
+				return;
+			}
+		}
+	}
+}
+
+void handleMatrix(bool shouldRefresh = true, int displacement = 0) {
+	if (shouldRefresh) {
+			matrix.fillScreen(LOW);
+	}
+
+	String string = shelfText[currentStep];
+
+	if (string.length() > 12 && matrixLoopCount < 3) {
+		tickMatrix(displacement);
+	} else {
+    drawMatrix(displacement);
+	}
+}
+
+
+
+
+void assignMatrix() {
     switch (currentStep) {
         case 0:  // IDLE
             matrix.fillScreen(LOW);
             displayImage(IMAGES[2], matrix.width() - 1, 0);  // Euro sign
-            drawMatrix(false, 1);
+            handleMatrix(false, 1);
             break;
         case 1: {  // In store
-            drawMatrix();
+            handleMatrix();
 
             int j = 0;
             for (int i = selectedSize.length(); i > 0; i--) {
@@ -208,17 +297,22 @@ void handleMatrix() {
             break;
         }
         case 2:  // -
-            drawMatrix();
+            handleMatrix();
             break;
         case 3:  // Call for shoes?
             matrix.fillScreen(LOW);
             displayImage(IMAGES[0], 16, 1);  // Check mark
             displayImage(IMAGES[1], 7, 1);   // Cross
-            drawMatrix(false);
+
+						if (matrixLoopCount < 4) {
+	            handleMatrix(false);
+						}
             break;
         case 4:  // Take a seat, someone will come over
-            drawMatrix();
-            delay(5000);
+						matrixLoopCount = 0;
+						
+            handleMatrix();
+            delay(2000);
             // currentStep = 1;
             currentStep = 0;
             break;
@@ -227,9 +321,114 @@ void handleMatrix() {
     }
 }
 
-//
+
+//////
+//	Wifi & sockets
+//////
+
+//connect to Wifi
+void connectWiFi() {
+	// We start by connecting to a WiFi network
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+
+		WiFi.mode(WIFI_STA); // SETS TO STATION MODE!
+
+    WiFi.begin(ssid, password);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+
+void connectSockets() {
+	Serial.println("Connecting to sockets");
+	
+	// client.connect(host, port);
+
+	// Connect with sockets
+	while (!client.connect(host, port)) {
+			// Serial.println("Connection failed");
+			// return;
+			Serial.print(",");
+	}
+
+	if (client.connected()) {
+			Serial.println("Connection succeed");
+			Serial.println(client.connected());
+			Serial.println(client.monitor());
+			client.send("connection", "message", "Connected !!!!");
+	}
+}
+
+void socketMonitor() {
+	if (client.monitor()) {
+		Serial.print("RID: ");
+		Serial.print(RID);
+		Serial.print(", Rname: ");
+		Serial.print(Rname);
+		Serial.print(", Rcontent: ");
+		Serial.println(Rcontent + " .");
+
+		lastReply = millis();
+
+		handleSize();
+		handleReset();
+		
+	} else if (!client.connected()) {
+			Serial.println('Reconnecting...');
+			client.connect(host, port);
+	}
+}
+
+//////
+// Socket events
+//////
+
+void handleSize() {
+	if (RID == "setSize") {
+		if (Rname == "inStock") {
+			Serial.print("Got size: ");
+			Serial.println(Rcontent);
+
+			client.send("message", "message", "in stock");
+
+			if (currentStep == 0) {
+				selectedSize = Rcontent;
+				currentStep = 1;
+			}
+		}
+
+		if (Rname == "noStock") {
+			Serial.print("No size: ");
+			Serial.println(Rcontent);
+
+			client.send("message", "message", "no stock");
+
+			if (currentStep == 0) {
+				selectedSize = Rcontent;
+				currentStep = 2;
+			}
+		}
+	}
+}
+
+void handleReset() {
+	if (RID == "reset") {
+		currentStep = 0;
+	}
+}
+
+
+//////
 // Other functions
-//
+//////
 void displayImage(const byte* image, int decrementX, int decrementY) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
