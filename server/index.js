@@ -1,51 +1,3 @@
-// // Super simple web socket server for prototyping
-// const port = 4000;
-
-// // const app = require('express')();
-// const WebSocket = require('ws');
-
-// const wss = new WebSocket.Server({
-// 	port,
-// 	perMessageDeflate: {
-// 		zlibDeflateOptions: {
-// 			// See zlib defaults.
-// 			chunkSize: 1024,
-// 			memLevel: 7,
-// 			level: 3,
-// 		},
-// 		zlibInflateOptions: {
-// 			chunkSize: 10 * 1024,
-// 		},
-// 		// Other options settable:
-// 		clientNoContextTakeover: true, // Defaults to negotiated value.
-// 		serverNoContextTakeover: true, // Defaults to negotiated value.
-// 		serverMaxWindowBits: 10, // Defaults to negotiated value.
-// 		// Below options specified as default values.
-// 		concurrencyLimit: 10, // Limits zlib concurrency for perf.
-// 		threshold: 1024, // Size (in bytes) below which messages
-// 		// should not be compressed.
-// 	},
-// });
-
-// wss.on('connection', function connection(ws) {
-// 	console.log('Connected');
-
-// 	ws.on('message', function incoming(message) {
-// 		try {
-// 			const json = JSON.parse(message);
-// 			console.log('received: %s', message);
-
-// 			sendToShelves(json.value);
-// 		} catch (err) {
-// 			console.log('received non JSON: %s', message);
-// 		}
-// 	});
-
-// 	function sendToShelves(value) {
-// 		ws.send(value);
-// 	}
-// });
-
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
@@ -60,7 +12,11 @@ io.on('connection', function(socket) {
 	socket.on('getSize', size => {
 		console.log('Size', size);
 
-		io.emit('setSize', { message: size });
+		io.emit('setSize', { inStock: size });
+	});
+
+	socket.on('reset', message => {
+		io.emit('reset', message);
 	});
 
 	socket.on('connection', data => {
