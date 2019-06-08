@@ -8,28 +8,32 @@
 SocketIOClient client;
 
 ////// Network stuff
-char host[] = "192.168.1.12";
-int port = 4000;
-const char* ssid = "Belcentrale2.4GHz_95791";
-const char* password = "YNQAELEF5J";
+// char host[] = "192.168.1.12";
+// int port = 4000;
+// const char* ssid = "Belcentrale2.4GHz_95791";
+// const char* password = "YNQAELEF5J";
 
-// const char* ssid = "Kyunwang iPhone";
-// const char* password = "somesummerdream";
-// char host[] = "a8c1b126.ngrok.io";
-// int port = 80;
+const char* ssid = "";
+const char* password = "";
+char host[] = "172.20.10.2";
+int port = 4000;
 
 // Event - Key - Value from socket server
 extern String RID;
 extern String Rname;
 extern String Rcontent;
 
-unsigned long lastReply = 0;
-unsigned long lastSend = 0;
-///////
-
+//////
+// General variables
+//////
+int currentStep = 0;  // 0: IDLE, 1: Available, 2: Unavailable, 3: Try shoes on, 4: Please wait
 int matrixLoopCount = 0;
+const int ldrThreshold = 300;
+String selectedSize = "43.5";
 
+//////
 // Shelf text and state management
+//////
 String shelfText[5] = {
     "175",
     "In store",
@@ -38,12 +42,9 @@ String shelfText[5] = {
                        // "Please wait... someone will come over",
     "Take a seat, someone will come over"};
 
-bool shelfState = false;  // Meaning not in store
-int currentStep = 0;      // 0: IDLE, 1: Available, 2: Unavailable, 3: Try shoes on, 4: Please wait
-bool isPickedUp = false;
-String selectedSize = "43.5";
-
+//////
 // Matrix images
+//////
 const byte IMAGES[][8] = {
     // Checkmark
     {B00000010, B00000001, B00000010, B00000100, B00001000, B00010000, B00000000, B00000000},
@@ -53,20 +54,21 @@ const byte IMAGES[][8] = {
     {B00011100, B00110110, B01010101, B01010101, B01000001, B00100010, B00000000, B00000000}};
 const int IMAGES_LEN = sizeof(IMAGES) / 8;
 
+//////
 // Button
+//////
 PinButton buttonPin1 = D2;  // D2 & PWD
 PinButton buttonPin2 = D3;  // D3
 
+//////
 // LDR
+//////
 const int ldrPin = A0;
-const int ldrThreshold = 150;
 
-// Debounce
-unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 50;
-
+//////
 // LED Matrix Max7219 - NodeMCU Amica
 // CS: D4 - DIN: D7(MOSI) - CLK: D5(SCK)
+//////
 int pinCS = D4;  // SPI
 int numberOfHorizontalDisplays = 12;
 int numberOfVerticalDisplays = 1;
@@ -78,33 +80,36 @@ int charWidth = 5 + spacer;  // The font width is 5 pixels
 int wait = 20;               // 20ms
 
 void setup() {
-    Serial.begin(115200);
+    // Serial.begin(115200);
+    Serial.begin(230400);
     setupMatrix();
     setupPinModes();
 
     connectWiFi();
     connectSockets();
-
-    // for (int i = 0; i < 5; i++) Serial.println(shelfText[i]);
 }
 
 void loop() {
     buttonPin1.update();
     buttonPin2.update();
 
-    handleButton();
-    handleLdr();
-    assignMatrix();
-
     socketMonitor();
+
+    if (currentStep == 3) {
+        handleButton();
+    }
+
+    if (currentStep == 1 || currentStep == 2 || currentStep == 3) {
+        handleLdr();
+    }
+
+    assignMatrix();
 }
 
 //////
 // Setup functions
 //////
 void setupPinModes() {
-    // pinMode(buttonPin1, INPUT_PULLUP);
-    // pinMode(buttonPin2, INPUT_PULLUP);
     pinMode(ldrPin, INPUT);
 }
 
@@ -132,61 +137,44 @@ int handleLdr() {
     int ldrValue = analogRead(ldrPin);
     // Serial.println(ldrValue);
 
-    switch (currentStep) {
-        case 1:  // Available
-            if (ldrValue > ldrThreshold) {
-                Serial.println("LDR 1");
-                // isPickedUp = true;
-                currentStep = 3;
-            } else {
-                // Depends on availability
-                currentStep = 1;
-                matrixLoopCount = 0;
-            }
-            break;
-        case 3:
-            if (ldrValue < ldrThreshold) {
-                Serial.println("LDR 3");
-                // Should check for whether it has been for 5sec and whether it had been replied on
-                isPickedUp = false;
-                currentStep = 1;
-            }
-            break;
+    if (currentStep == 1) {
+        if (ldrValue > ldrThreshold) {
+            Serial.println("LDR 1");
+            currentStep = 3;
+        }
     }
 
-    return ldrValue;
+    if (currentStep == 3) {
+        if (ldrValue < ldrThreshold) {
+            Serial.println("LDR 3");
+            // Should check for whether it has been for 5sec and whether it had been replied on
+            currentStep = 1;
+            matrixLoopCount = 0;
+        }
+    }
+    // return ldrValue;
 }
 
 void handleButton() {
     if (buttonPin1.isSingleClick()) {
-        Serial.println('Click 1');
+        Serial.println("Click 1");
         handleButtonPress(0);
     }
 
     if (buttonPin2.isSingleClick()) {
-        Serial.println('Click 2');
+        Serial.println("Click 2");
         handleButtonPress(1);
     }
 }
 
 void handleButtonPress(int buttonSide) {
-    switch (currentStep) {
-        case 0:
-            // currentStep++;  // Jump to availablity check
-            break;
-        case 3:
-            if (buttonSide == 0) {  // Yes
-                currentStep = 4;
-            } else {  // No
-                // depending on availability: 1 or 2
-                // currentStep = 1;
-                currentStep = 0;
-            }
-            break;
-        // case 4:
-        // break;
-        default:
-            break;
+    if (currentStep == 3) {
+        matrixLoopCount = 0;
+        if (buttonSide == 0) {  // Yes
+            currentStep = 4;
+        } else {  // No
+            currentStep = 0;
+        }
     }
 }
 
@@ -243,14 +231,14 @@ void tickMatrix(int displacement = 0) {
             matrixLoopCount++;
             Serial.println(i);
             Serial.println(matrixLoopCount);
-            if (matrixLoopCount == 2) {
+            if (matrixLoopCount == 1) {
                 // matrix.fillScreen(LOW);
 
                 // Quick test fix...
                 if (currentStep == 3) {
-                    displayImage(IMAGES[0], 16, 1);  // Check mark
-                    displayImage(IMAGES[1], 7, 1);   // Cross
-                    drawMatrix(displacement);
+                    // displayImage(IMAGES[0], 16, 1);  // Check mark
+                    // displayImage(IMAGES[1], 7, 1);   // Cross
+                    // drawMatrix(displacement);
                 }
 
                 return;
@@ -266,7 +254,7 @@ void handleMatrix(bool shouldRefresh = true, int displacement = 0) {
 
     String string = shelfText[currentStep];
 
-    if (string.length() > 12 && matrixLoopCount < 3) {
+    if (string.length() > 12 && matrixLoopCount < 2) {
         tickMatrix(displacement);
     } else {
         drawMatrix(displacement);
@@ -294,25 +282,38 @@ void assignMatrix() {
 
             break;
         }
-        case 2:  // -
+        case 2: {  // -
             handleMatrix();
+            int j = 0;
+            for (int i = selectedSize.length(); i > 0; i--) {
+                const int posX = matrix.width() - ((i) * (charWidth));
+
+                matrix.drawChar(posX, 1, selectedSize[j], HIGH, LOW, 1);
+                j++;
+            }
+            matrix.write();
+
             break;
+        }
         case 3:  // Call for shoes?
             matrix.fillScreen(LOW);
             displayImage(IMAGES[0], 16, 1);  // Check mark
             displayImage(IMAGES[1], 7, 1);   // Cross
 
-            if (matrixLoopCount < 4) {
-                handleMatrix(false);
-            }
+            // if (matrixLoopCount < 3) {
+            handleMatrix(false);
+            // }
             break;
         case 4:  // Take a seat, someone will come over
-            matrixLoopCount = 0;
+            // matrixLoopCount = 0;
 
             handleMatrix();
-            delay(2000);
+
+            if (matrixLoopCount == 2) {
+                delay(500);
+                currentStep = 0;
+            }
             // currentStep = 1;
-            currentStep = 0;
             break;
         default:
             break;
@@ -347,19 +348,14 @@ void connectWiFi() {
 void connectSockets() {
     Serial.println("Connecting to sockets");
 
-    // client.connect(host, port);
-
     // Connect with sockets
     while (!client.connect(host, port)) {
-        // Serial.println("Connection failed");
-        // return;
         Serial.print(",");
     }
 
     if (client.connected()) {
+        Serial.println("");
         Serial.println("Connection succeed");
-        Serial.println(client.connected());
-        Serial.println(client.monitor());
         client.send("connected", "message", "Connected !!!!");
     }
 }
@@ -373,14 +369,14 @@ void socketMonitor() {
         Serial.print(", Rcontent: ");
         Serial.println(Rcontent + " .");
 
-        lastReply = millis();
-
-        handleSize();
         handleReset();
-        // handleSetState();
+
+        if (currentStep == 0) {
+            handleSize();
+        }
 
     } else if (!client.connected()) {
-        Serial.println('Reconnecting...');
+        Serial.println("Reconnecting...");
         client.connect(host, port);
     }
 }
@@ -388,24 +384,6 @@ void socketMonitor() {
 //////
 // Socket events
 //////
-
-bool initialised = false;
-void handleSetState() {
-    if (initialised == false) {
-        return;
-    }
-
-    if (RID == "setState") {
-        if (Rname == "state") {
-            Serial.print("Got state in stock: ");
-            Serial.println(Rcontent);
-
-            shelfState = Rcontent;
-            initialised = true;
-        }
-    }
-}
-
 void handleSize() {
     if (RID == "setSize") {
         if (Rname == "inStock") {
@@ -413,18 +391,6 @@ void handleSize() {
             Serial.println(Rcontent);
 
             client.send("message", "message", "in stock");
-
-            if (currentStep == 0) {
-                selectedSize = Rcontent;
-                currentStep = 1;
-            }
-        }
-
-        if (Rname == "noStock") {
-            Serial.print("No size: ");
-            Serial.println(Rcontent);
-
-            client.send("message", "message", "no stock");
 
             if (currentStep == 0) {
                 selectedSize = Rcontent;
@@ -436,7 +402,10 @@ void handleSize() {
 
 void handleReset() {
     if (RID == "reset") {
+        matrixLoopCount = 0;
         currentStep = 0;
+
+        client.send("hasReset", "key", "value");
     }
 }
 
