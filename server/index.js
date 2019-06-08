@@ -6,6 +6,8 @@ app.get('/', function(req, res) {
 	res.sendFile(__dirname + '/index.html');
 });
 
+let shelfIndex = 0;
+
 io.on('connection', function(socket) {
 	console.log('a user connected');
 
@@ -16,11 +18,21 @@ io.on('connection', function(socket) {
 	});
 
 	socket.on('reset', message => {
+		console.log('Resetting: ');
+
 		io.emit('reset', message);
 	});
 
-	socket.on('connection', data => {
-		console.log('connection', data);
+	socket.on('hasReset', message => {
+		console.log('Has reset');
+	});
+
+	socket.on('connected', data => {
+		shelfIndex++;
+
+		const isInStore = shelfIndex % 3; // 0, 1, 2
+
+		console.log('socket connected', data);
 	});
 
 	socket.on('message', data => {
